@@ -515,7 +515,8 @@ void main() { fragColor = vec4(texture(uTex, gl_FragCoord.xy / uOut).rgb, 1.0); 
 
 // ---------------------------------------------------------------- constants
 const BASE_DIST = 3.6;
-const DEFAULT_CAM = { target: [0, 0, 0], az: 30, el: 25, dist: 3.6 };
+// Default view: the zoom x4.9 close-up used for images/zoom.png in the repo
+const DEFAULT_CAM = { target: [0.54433, 0.120321, 0.525335], az: 33.5, el: 20, dist: 3.6 / 4.9 };
 // Cosine palettes a + b*cos(2pi(c*t + d)), identical to mandelbulb/palettes.py
 const PALETTES = {
   Skytopia: [[0.60,0.50,0.45],[0.40,0.40,0.40],[1.00,0.90,0.80],[0.05,0.25,0.45]],
@@ -536,8 +537,8 @@ const PRESETS = {
 
 // ---------------------------------------------------------------- state
 const S = {
-  power: 8, iters: 12, detail: 1, julia: false, cx: -0.6, cy: -0.4, cz: 0.4,
-  palette: "Skytopia", cfreq: 1.4, coff: 0.1, glow: 0.4, fog: 0, spec: 0.35,
+  power: 8, iters: 14, detail: 1, julia: false, cx: -0.6, cy: -0.4, cz: 0.4,
+  palette: "Ember", cfreq: 1.4, coff: 0.1, glow: 0, fog: 0, spec: 0.35,
   shadows: true, ao: true, fov: 40,
   rotSpeed: 6, morphSpeed: 0.25,
   animRotate: false, animPower: false, animJulia: false,

@@ -319,8 +319,9 @@ def _render_kernel(width, height, cam, tan_half_fov, P, pal, ss):
 class Camera:
     """Orbit camera: looks at `target` from `distance`, azimuth/elevation in degrees (z up)."""
 
-    def __init__(self, target=(0.0, 0.0, 0.0), azimuth=30.0, elevation=25.0,
-                 distance=3.6, fov=40.0):
+    # Default view = the project's signature close-up (zoom x4.9 into the power-8 bulb)
+    def __init__(self, target=(0.54433, 0.120321, 0.525335), azimuth=33.5, elevation=20.0,
+                 distance=3.6 / 4.9, fov=40.0):
         self.target = np.asarray(target, dtype=np.float64)
         self.azimuth = float(azimuth)
         self.elevation = float(np.clip(elevation, -89.9, 89.9))
@@ -367,10 +368,10 @@ class Camera:
 
 
 DEFAULTS = dict(
-    power=8.0, iterations=12, bailout=4.0,
+    power=8.0, iterations=14, bailout=4.0,
     julia=False, julia_c=(0.35, 0.35, -0.35),
     max_steps=None, detail=1.0, fudge=None,
-    shadows=True, ao=True, glow=0.4,
+    shadows=True, ao=True, glow=0.0,
     color_freq=1.4, color_offset=0.1, bound=None, specular=0.35, fog=0.0,
 )
 

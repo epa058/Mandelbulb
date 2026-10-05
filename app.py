@@ -19,8 +19,9 @@ from PIL import Image
 
 from mandelbulb import PALETTES, DEFAULT_PALETTE, Camera, pick, render, warmup
 
-DEFAULT_VIEW = {"target": [0.0, 0.0, 0.0], "dist": 3.6}
-DEFAULT_AZ, DEFAULT_EL = 30.0, 25.0
+# Default view: the zoom x4.9 close-up used for images/zoom.png
+DEFAULT_VIEW = {"target": [0.54433, 0.120321, 0.525335], "dist": 3.6 / 4.9}
+DEFAULT_AZ, DEFAULT_EL = 33.5, 20.0
 BASE_DIST = 3.6
 
 PRESETS = {
@@ -115,7 +116,7 @@ controls = html.Div(className="panel", children=[
         labeled("Preset", dcc.Dropdown(id="preset", options=list(PRESETS),
                                        placeholder="Choose a preset…", clearable=True)),
         labeled("Power", slider("power", 2, 16, 0.5, 8, {2: "2", 8: "8", 16: "16"})),
-        labeled("Iterations", slider("iters", 3, 40, 1, 12, {3: "3", 12: "12", 40: "40"})),
+        labeled("Iterations", slider("iters", 3, 40, 1, 14, {3: "3", 14: "14", 40: "40"})),
         labeled("Detail (lower = finer, slower)",
                 slider("detail", 0.25, 4, 0.25, 1.0, {0.25: "¼", 1: "1", 4: "4"})),
         dcc.Checklist(id="julia", options=[{"label": " Julia mode", "value": "on"}],
@@ -150,9 +151,9 @@ controls = html.Div(className="panel", children=[
                                         value=DEFAULT_PALETTE, clearable=False)),
         labeled("Colour frequency", slider("cfreq", 0.0, 4.0, 0.05, 1.4, {0: "0", 4: "4"})),
         labeled("Colour offset", slider("coffset", 0.0, 1.0, 0.01, 0.1, {0: "0", 1: "1"})),
-        labeled("Glow", slider("glow", 0.0, 1.5, 0.05, 0.4, {0: "0", 1.5: "1.5"})),
+        labeled("Glow", slider("glow", 0.0, 1.5, 0.05, 0.0, {0: "0", 1.5: "1.5"})),
         dcc.Checklist(
-            id="flags", value=["shadows", "ao", "glow"], inline=True, className="check",
+            id="flags", value=["shadows", "ao"], inline=True, className="check",
             options=[{"label": " Shadows", "value": "shadows"},
                      {"label": " Ambient occlusion", "value": "ao"},
                      {"label": " Glow", "value": "glow"},

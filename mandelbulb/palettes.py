@@ -12,7 +12,7 @@ PALETTES = {
     "Bone": [[0.70, 0.66, 0.60], [0.15, 0.15, 0.15], [1.00, 1.00, 1.00], [0.00, 0.05, 0.10]],
 }
 
-DEFAULT_PALETTE = "Skytopia"
+DEFAULT_PALETTE = "Ember"
 
 
 def get_palette(name=None):
