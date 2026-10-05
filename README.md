@@ -29,7 +29,13 @@ Tip: when you zoom in past about ×50, raise **Iterations** (16–30) to resolve
 
 Open `web/index.html` in any recent browser. It needs no server or install, just WebGL 2. The same distance estimator and shading run as a GLSL fragment shader, so the fractal renders in real time.
 
-- **Navigation:** drag to orbit, scroll or pinch to zoom, double-click or double-tap to fly to a point. <kbd>H</kbd> hides the panel and <kbd>R</kbd> resets the view.
+- **Orbit mode:** drag to orbit, scroll or pinch to zoom, double-click or double-tap to fly to a point. Orbit speed drops as you zoom in, so dragging stays controllable up close. <kbd>H</kbd> hides the panel and <kbd>R</kbd> resets the view.
+- **Fly mode** (<kbd>F</kbd>): first-person controls. Click the view to capture the mouse, then:
+  - <kbd>W</kbd>/<kbd>S</kbd> move toward or away from the crosshair, and <kbd>A</kbd>/<kbd>D</kbd> strafe.
+  - <kbd>Space</kbd>/<kbd>Shift</kbd> rise and sink.
+  - Scrolling sets your speed, and <kbd>Esc</kbd> frees the cursor.
+  - Your speed scales with the distance to the surface, and each step is less than half that distance. You slow down smoothly as you approach and can't pass through. Holding <kbd>W</kbd> is effectively an endless zoom.
+  - Switching back to orbit mode orbits around whatever the crosshair was pointing at.
 - **Resolution:** the preview resolution adapts while you move to keep the frame rate up. Once the view is still, the page renders at full resolution and adds anti-aliasing samples one frame at a time.
 - **Motion:** auto-rotate, *Breathe power* (the power swings between 4.5 and 11.5) and *Orbit Julia c*, which morphs the Julia bulb live.
 - **Snapshot** saves the converged frame as a PNG. **Copy render.py command** writes the exact `render.py` call that recreates the current view at print size.

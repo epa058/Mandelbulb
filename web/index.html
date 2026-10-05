@@ -179,6 +179,24 @@ button.primary { background: var(--copper); color: #1c130a; border-color: var(--
 
 .fail { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
 
+/* Fly mode */
+.crosshair { position: fixed; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; pointer-events: none; }
+.crosshair::before, .crosshair::after { content: ""; position: absolute; background: var(--text); opacity: .7; border-radius: 1px; }
+.crosshair::before { left: 7px; top: 0; width: 2px; height: 16px; }
+.crosshair::after { top: 7px; left: 0; width: 16px; height: 2px; }
+.lock-prompt {
+  position: fixed; left: 50%; top: calc(50% + 28px); transform: translateX(-50%);
+  background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; font-size: 12px; color: var(--text); pointer-events: none; white-space: nowrap;
+}
+.mode-block { display: grid; gap: 10px; padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 8px; }
+.seg button[aria-pressed=true] { background: var(--copper-dim); color: var(--text); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+.keys dt { display: flex; gap: 3px; flex-wrap: wrap; }
+.keys dd { margin: 0; }
+
 @media (max-width: 720px) {
   :root { --panel-w: auto; }
   .panel { left: 12px; right: 12px; top: auto; height: 52%; width: auto; }
@@ -194,9 +212,11 @@ button.primary { background: var(--copper); color: #1c130a; border-color: var(--
 
 <header class="masthead">
   <h1>Mandel<span>bulb</span></h1>
-  <p>Drag to orbit · scroll or pinch to zoom · double-click to fly in · <kbd>H</kbd> panel · <kbd>R</kbd> reset</p>
+  <p id="hint">Drag to orbit · scroll or pinch to zoom · double-click to fly in · <kbd>F</kbd> fly mode · <kbd>H</kbd> panel · <kbd>R</kbd> reset</p>
 </header>
 
+<div class="crosshair" id="crosshair" hidden></div>
+<div class="lock-prompt" id="lock-prompt" hidden>Click the view to steer with the mouse</div>
 <div class="hud" id="hud" aria-live="off"></div>
 
 <button class="open-panel" id="open-panel" hidden>Controls</button>
@@ -207,6 +227,20 @@ button.primary { background: var(--copper); color: #1c130a; border-color: var(--
     <button class="icon-btn" id="close-panel" aria-label="Hide controls">×</button>
   </div>
   <div class="panel-body" id="panel-body">
+    <div class="mode-block">
+      <div class="seg" role="group" aria-label="Navigation mode">
+        <button id="mode-orbit" aria-pressed="true">Orbit</button>
+        <button id="mode-fly" aria-pressed="false">Fly <kbd>F</kbd></button>
+      </div>
+      <dl class="keys" id="fly-keys" hidden>
+        <dt><kbd>W</kbd><kbd>S</kbd></dt><dd>forward / back, toward the crosshair</dd>
+        <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>strafe left / right</dd>
+        <dt><kbd>Space</kbd><kbd>Shift</kbd></dt><dd>rise / sink</dd>
+        <dt>Mouse</dt><dd>look around (Esc frees the cursor)</dd>
+        <dt>Scroll</dt><dd>change speed</dd>
+      </dl>
+      <p class="note" id="fly-note" hidden>Speed scales with your distance to the surface, so you slow down as you get close and can never pass through it.</p>
+    </div>
     <details open>
       <summary>Fractal</summary>
       <div class="group">
@@ -508,7 +542,11 @@ const S = {
   rotSpeed: 6, morphSpeed: 0.25,
   animRotate: false, animPower: false, animJulia: false,
   quality: 1, maxSamples: 32,
+  flySpeed: 1, lookSens: 0.12,
 };
+let mode = "orbit";                              // "orbit" | "fly"
+const fly = { pos: [0, 0, 3.6], yaw: 0, pitch: 0, eff: 3.6 };
+const keys = new Set();
 let cam = structuredClone(DEFAULT_CAM);
 let flight = null;          // active fly-to animation
 let lastInteract = -1e9;    // time of last camera input
@@ -534,7 +572,12 @@ function basisFromForward(fwd) {
   right = norm(right);
   return { fwd, right, up: cross(right, fwd) };
 }
+function flyForward() {
+  const y = rad(fly.yaw), p = rad(fly.pitch);
+  return [Math.cos(p) * Math.cos(y), Math.cos(p) * Math.sin(y), Math.sin(p)];
+}
 function cameraFrame() {
+  if (mode === "fly") return { pos: fly.pos, ...basisFromForward(flyForward()) };
   if (flight) return flight.frame;
   const back = backDir(cam.az, cam.el);
   const pos = add(cam.target, mul(back, cam.dist));
@@ -542,14 +585,19 @@ function cameraFrame() {
 }
 
 // ---------------------------------------------------------------- derived params (match renderer.py)
+// Distance that sets the level of detail: orbit radius, or what the crosshair looks at in fly mode
+function viewDist() {
+  if (mode === "fly") return fly.eff;
+  return flight ? flight.dist : cam.dist;
+}
 function derived() {
-  const zoomLog = Math.max(0, Math.log2(BASE_DIST / cam.dist));
+  const zoomLog = Math.max(0, Math.log2(BASE_DIST / viewDist()));
   const fudge = S.julia ? 0.55 : 0.9;
   return {
     fudge,
     steps: Math.min(1500, Math.round((200 + 45 * zoomLog) * 0.9 / fudge)),
     bound: (S.power < 4 || S.julia) ? 2.0 : 1.5,
-    scale: 0.35 * (flight ? flight.dist : cam.dist),
+    scale: 0.35 * viewDist(),
   };
 }
 
@@ -799,9 +847,104 @@ function drawSample(w, h, jx, jy, blend) {
   cur = 1 - cur;
 }
 
+// ---------------------------------------------------------------- fly mode
+function deAt(p) { return deCPU(p[0], p[1], p[2]); }
+
+function updateFlyEff() {
+  const f = flyForward();
+  const pix = 2 * Math.tan(rad(S.fov) / 2) / cssH;
+  const t = marchCPU(fly.pos, f, pix);
+  const d = Math.abs(deAt(fly.pos));
+  const target = t > 0 ? t : Math.max(4 * d, 0.5);
+  fly.eff = Math.min(BASE_DIST * 2, Math.max(1e-7, target));
+}
+
+function updateFly(dt) {
+  const f = flyForward();
+  let right = cross(f, [0, 0, 1]);
+  right = Math.hypot(...right) < 1e-9 ? [1, 0, 0] : norm(right);
+  let mv = [0, 0, 0];
+  const k = c => keys.has(c);
+  if (k("KeyW") || k("ArrowUp")) mv = add(mv, f);
+  if (k("KeyS") || k("ArrowDown")) mv = sub(mv, f);
+  if (k("KeyD") || k("ArrowRight")) mv = add(mv, right);
+  if (k("KeyA") || k("ArrowLeft")) mv = sub(mv, right);
+  if (k("Space") || k("KeyE")) mv = add(mv, [0, 0, 1]);
+  if (k("ShiftLeft") || k("ShiftRight") || k("KeyQ")) mv = sub(mv, [0, 0, 1]);
+  const len = Math.hypot(...mv);
+  if (len < 1e-9) return false;
+  mv = mul(mv, 1 / len);
+  // Speed proportional to the distance to the surface; never step more than half of it
+  const d = Math.max(Math.abs(deAt(fly.pos)), 1e-9);
+  const step = Math.min(S.flySpeed * d * dt, 0.5 * d);
+  const next = add(fly.pos, mul(mv, step));
+  if (Math.hypot(...next) < 12) fly.pos = next;
+  updateFlyEff();
+  return true;
+}
+
+function look(dx, dy) {
+  fly.yaw = ((fly.yaw - dx * S.lookSens) % 360 + 360) % 360;
+  fly.pitch = Math.max(-89, Math.min(89, fly.pitch - dy * S.lookSens));
+  updateFlyEff();
+  touch();
+}
+
+// Orbit camera equivalent to the current fly view (looks at what the crosshair hits)
+function orbitFromFly() {
+  const f = flyForward();
+  const pix = 2 * Math.tan(rad(S.fov) / 2) / cssH;
+  let t = marchCPU(fly.pos, f, pix);
+  if (t <= 0) t = Math.max(Math.hypot(...fly.pos), 1);
+  const back = mul(f, -1);
+  return {
+    target: add(fly.pos, mul(f, t)),
+    az: ((Math.atan2(back[1], back[0]) * 180 / Math.PI) % 360 + 360) % 360,
+    el: Math.asin(Math.max(-1, Math.min(1, back[2]))) * 180 / Math.PI,
+    dist: t,
+  };
+}
+
+function setMode(m) {
+  if (m === mode) return;
+  if (m === "fly") {
+    const f = cameraFrame();
+    flight = null;
+    fly.pos = f.pos.slice();
+    fly.yaw = ((Math.atan2(f.fwd[1], f.fwd[0]) * 180 / Math.PI) % 360 + 360) % 360;
+    fly.pitch = Math.asin(Math.max(-1, Math.min(1, f.fwd[2]))) * 180 / Math.PI;
+    mode = "fly";
+    updateFlyEff();
+  } else {
+    cam = orbitFromFly();
+    mode = "orbit";
+    keys.clear();
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+    syncCameraSliders();
+  }
+  const isFly = mode === "fly";
+  document.getElementById("mode-orbit").setAttribute("aria-pressed", !isFly);
+  document.getElementById("mode-fly").setAttribute("aria-pressed", isFly);
+  document.getElementById("fly-keys").hidden = !isFly;
+  document.getElementById("fly-note").hidden = !isFly;
+  document.getElementById("crosshair").hidden = !isFly;
+  document.getElementById("hint").innerHTML = isFly
+    ? "<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd>/<kbd>Shift</kbd> rise/sink · mouse looks · scroll sets speed · <kbd>F</kbd> orbit mode"
+    : "Drag to orbit · scroll or pinch to zoom · double-click to fly in · <kbd>F</kbd> fly mode · <kbd>H</kbd> panel · <kbd>R</kbd> reset";
+  canvas.style.cursor = isFly ? "crosshair" : "";
+  updateLockPrompt();
+  touch();
+}
+const finePointer = window.matchMedia("(pointer: fine)").matches;
+function updateLockPrompt() {
+  document.getElementById("lock-prompt").hidden =
+    !(mode === "fly" && finePointer && document.pointerLockElement !== canvas);
+}
+document.addEventListener("pointerlockchange", () => { updateLockPrompt(); if (!document.pointerLockElement) keys.clear(); });
+
 function animate(now, dt) {
   let any = false;
-  if (S.animRotate) { cam.az = (cam.az + S.rotSpeed * dt) % 360; any = true; }
+  if (S.animRotate && mode === "orbit") { cam.az = (cam.az + S.rotSpeed * dt) % 360; any = true; }
   if (S.animPower) {
     S.power = 8 - 3.5 * Math.cos(now * 0.001 * S.morphSpeed * 2 * Math.PI);   // breathes 4.5 .. 11.5
     any = true;
@@ -822,7 +965,7 @@ function frame(now) {
   const dt = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
 
-  const flying = updateFlight(now);
+  const flying = updateFlight(now) || (mode === "fly" && updateFly(dt));
   const animating = animate(now, dt);
   const moving = flying || animating || (now - lastInteract) < 160;
   if (moving || dirty || prevMoving) sample = 0;   // restart at full res once motion stops
@@ -861,10 +1004,12 @@ function updateHud(moving, w, h, force) {
   const now = performance.now();
   if (!force && now - hudTimer < 120) return;
   hudTimer = now;
-  const dist = flight ? flight.dist : cam.dist;
-  const zoom = BASE_DIST / dist;
+  const zoom = BASE_DIST / viewDist();
   const parts = [
     `<span>zoom <b>${fmtZoom(zoom)}</b></span>`,
+    ...(mode === "fly" ? [
+      `<span>speed <b>${S.flySpeed.toFixed(2)}</b></span>`,
+      `<span>to surface <b>${Math.abs(deAt(fly.pos)).toExponential(2)}</b></span>`] : []),
     moving ? `<span><b>${Math.round(fps)}</b> fps</span>` : `<span>samples <b>${Math.min(sample, S.maxSamples)}/${S.maxSamples}</b></span>`,
     `<span>${w}×${h}</span>`,
   ];
@@ -879,7 +1024,16 @@ const pointers = new Map();
 let dragStart = null, pinchStart = null, lastTap = { t: 0, x: 0, y: 0 };
 
 canvas.addEventListener("pointerdown", e => {
-  canvas.setPointerCapture(e.pointerId);
+  if (mode === "fly" && e.pointerType === "mouse") {
+    if (document.pointerLockElement !== canvas) {
+      try {
+        const r = canvas.requestPointerLock();
+        if (r && r.catch) r.catch(() => {});   // refused: fall back to drag-to-look
+      } catch (_) {}
+    }
+    if (document.pointerLockElement === canvas) return;
+  }
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) dragStart = { x: e.clientX, y: e.clientY, moved: 0 };
   if (pointers.size === 2) {
@@ -888,10 +1042,19 @@ canvas.addEventListener("pointerdown", e => {
   }
 });
 canvas.addEventListener("pointermove", e => {
+  if (mode === "fly" && document.pointerLockElement === canvas) {
+    // Some browsers report a large spurious jump on the first event after locking
+    if (Math.abs(e.movementX) < 250 && Math.abs(e.movementY) < 250) look(e.movementX, e.movementY);
+    return;
+  }
   if (!pointers.has(e.pointerId)) return;
   const prev = pointers.get(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (flight) return;
+  if (mode === "fly") {
+    if (pointers.size === 1) { canvas.classList.add("dragging"); look(e.clientX - prev.x, e.clientY - prev.y); }
+    return;
+  }
   if (pointers.size === 2 && pinchStart) {
     const [a, b] = [...pointers.values()];
     const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -904,8 +1067,10 @@ canvas.addEventListener("pointermove", e => {
   if (dragStart) dragStart.moved += Math.abs(dx) + Math.abs(dy);
   if (dragStart && dragStart.moved > 3) {
     canvas.classList.add("dragging");
-    cam.az = ((cam.az - dx * 0.3) % 360 + 360) % 360;
-    cam.el = Math.max(-89, Math.min(89, cam.el + dy * 0.3));
+    // Close to the surface, nearby relief swings across the view; calm the orbit as zoom grows
+    const sens = 0.3 / (1 + 0.45 * Math.log2(Math.max(1, BASE_DIST / cam.dist)));
+    cam.az = ((cam.az - dx * sens) % 360 + 360) % 360;
+    cam.el = Math.max(-89, Math.min(89, cam.el + dy * sens));
     keepOutside();
     syncCameraSliders();
     touch();
@@ -917,7 +1082,7 @@ function endPointer(e) {
   canvas.classList.remove("dragging");
   if (pointers.size < 2) pinchStart = null;
   if (pointers.size === 0 && dragStart) {
-    if (dragStart.moved <= 3) {
+    if (dragStart.moved <= 3 && mode === "orbit") {
       const now = performance.now();
       if (now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24) {
         flyTo(e.clientX, e.clientY);
@@ -931,16 +1096,36 @@ canvas.addEventListener("pointerup", endPointer);
 canvas.addEventListener("pointercancel", endPointer);
 canvas.addEventListener("wheel", e => {
   e.preventDefault();
+  if (mode === "fly") {
+    const kk = e.deltaMode === 1 ? 0.05 : 0.0015;
+    S.flySpeed = Math.min(4, Math.max(0.05, S.flySpeed * Math.exp(-e.deltaY * kk)));
+    syncSlider("flySpeed");
+    updateHud(false, rtW, rtH, true);
+    return;
+  }
   if (flight) return;
   const k = e.deltaMode === 1 ? 0.05 : 0.0015;
   zoomBy(Math.exp(e.deltaY * k));
 }, { passive: false });
 
+const FLY_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "Space", "ShiftLeft", "ShiftRight",
+                          "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 window.addEventListener("keydown", e => {
-  if (e.target.matches("input, select, textarea")) return;
-  if (e.key === "h" || e.key === "H") togglePanel();
-  if (e.key === "r" || e.key === "R") resetView();
+  if (e.target.matches("input[type=text], select, textarea")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (mode === "fly" && FLY_KEYS.has(e.code)) {
+    keys.add(e.code);
+    e.preventDefault();
+    if (e.target !== document.body && e.target.blur) e.target.blur();
+    return;
+  }
+  if (e.target.matches("input")) return;
+  if (e.code === "KeyH") togglePanel();
+  if (e.code === "KeyR") resetView();
+  if (e.code === "KeyF") setMode(mode === "fly" ? "orbit" : "fly");
 });
+window.addEventListener("keyup", e => keys.delete(e.code));
+window.addEventListener("blur", () => keys.clear());
 
 // ---------------------------------------------------------------- controls
 const SLIDERS = {
@@ -969,6 +1154,8 @@ const SLIDERS = {
     ["az", "Azimuth (°)", 0, 360, 0.5, v => v.toFixed(1), true],
     ["el", "Elevation (°)", -89, 89, 0.5, v => v.toFixed(1), true],
     ["fov", "Field of view (°)", 15, 90, 1, v => v],
+    ["flySpeed", "Fly speed", 0.05, 4, 0.05, v => (+v).toFixed(2)],
+    ["lookSens", "Mouse sensitivity (fly)", 0.03, 0.4, 0.01, v => (+v).toFixed(2)],
   ],
 };
 const sliderEls = {};
@@ -989,7 +1176,7 @@ for (const [group, list] of Object.entries(SLIDERS)) {
     input.value = get(); out.textContent = fmt(+get()); setFill(input);
     input.addEventListener("input", () => {
       const v = +input.value;
-      if (isCam) { if (flight) return; cam[key] = v; keepOutside(); touch(); }
+      if (isCam) { if (flight || mode === "fly") return; cam[key] = v; keepOutside(); touch(); }
       else { S[key] = v; markDirty(); if (key !== "rotSpeed" && key !== "morphSpeed") lastInteract = performance.now(); }
       out.textContent = fmt(v); setFill(input);
     });
@@ -1071,17 +1258,21 @@ document.getElementById("quality").addEventListener("change", e => { S.quality =
 document.getElementById("samples").addEventListener("change", e => { S.maxSamples = +e.target.value; markDirty(); });
 
 function resetView() {
+  if (mode === "fly") setMode("orbit");
   flight = null;
   cam = structuredClone(DEFAULT_CAM);
   syncCameraSliders();
   touch();
 }
 document.getElementById("btn-reset").addEventListener("click", resetView);
+document.getElementById("mode-orbit").addEventListener("click", () => setMode("orbit"));
+document.getElementById("mode-fly").addEventListener("click", () => setMode("fly"));
 document.getElementById("btn-in").addEventListener("click", () => {
+  if (mode === "fly") setMode("orbit");
   const r = canvas.getBoundingClientRect();
   flyTo(r.left + r.width / 2, r.top + r.height / 2);
 });
-document.getElementById("btn-out").addEventListener("click", () => zoomBy(2));
+document.getElementById("btn-out").addEventListener("click", () => { if (mode === "fly") setMode("orbit"); zoomBy(2); });
 
 // Panel show/hide
 const panel = document.getElementById("panel"), openBtn = document.getElementById("open-panel");
@@ -1120,10 +1311,11 @@ overlay.addEventListener("click", e => { if (e.target === overlay) overlay.hidde
 
 function renderPyCommand() {
   const f = n => +n.toPrecision(8);
-  const t = cam.target.map(f).join(" ");
+  const c = mode === "fly" ? orbitFromFly() : cam;
+  const t = c.target.map(f).join(" ");
   let cmd = `python render.py still -o mandelbulb.png --size 2048 --ss 2 --power ${f(S.power)} --iters ${S.iters}` +
     ` --detail ${S.detail} --palette ${S.palette} --color-freq ${S.cfreq} --color-offset ${S.coff} --glow ${S.glow}` +
-    ` --target ${t} --az ${f(cam.az)} --el ${f(cam.el)} --zoom ${f(BASE_DIST / cam.dist)} --fov ${S.fov}`;
+    ` --target ${t} --az ${f(c.az)} --el ${f(c.el)} --zoom ${f(BASE_DIST / c.dist)} --fov ${S.fov}`;
   if (S.julia) cmd += ` --julia ${f(S.cx)} ${f(S.cy)} ${f(S.cz)}`;
   if (S.fog > 0) cmd += ` --fog ${S.fog}`;
   if (!S.shadows) cmd += " --no-shadows";
