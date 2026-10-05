@@ -19,8 +19,8 @@ from PIL import Image
 
 from mandelbulb import PALETTES, DEFAULT_PALETTE, Camera, pick, render, warmup
 
-# Default view: the zoom x4.9 close-up used for images/zoom.png
-DEFAULT_VIEW = {"target": [0.54433, 0.120321, 0.525335], "dist": 3.6 / 4.9}
+# Opening view: the whole bulb, centred, seen from the same angle as images/zoom.png
+DEFAULT_VIEW = {"target": [0.0, 0.0, 0.0], "dist": 4.2}
 DEFAULT_AZ, DEFAULT_EL = 33.5, 20.0
 BASE_DIST = 3.6
 
