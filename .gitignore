@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.nbi
+*.nbc
+/turntable/
+/morph/
+/zoom/

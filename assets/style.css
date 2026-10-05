@@ -1,0 +1,101 @@
+:root {
+  --bg: #0e1015;
+  --panel: #161a22;
+  --line: #262c38;
+  --text: #e4e6eb;
+  --muted: #8b93a5;
+  --accent: #d9a066;
+}
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+}
+
+.app {
+  display: flex;
+  gap: 24px;
+  padding: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.viewer {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 20px;
+}
+
+.viewer .js-plotly-plot {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  cursor: crosshair;
+}
+
+.status { color: var(--muted); margin-top: 10px; font-size: 13px; }
+.readout { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px;
+           font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--muted); }
+.readout .tip { color: var(--accent); }
+
+.panel {
+  flex: 1 1 320px;
+  max-width: 420px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.panel h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+.hint { color: var(--muted); margin: 0 0 8px; }
+
+.section { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 14px; }
+.section h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--accent); margin: 0 0 10px; font-weight: 600;
+}
+
+.control { margin-bottom: 12px; }
+.control label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+
+.check label, .radio label { margin-right: 14px; cursor: pointer; }
+.check { margin: 6px 0 10px; }
+
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+button {
+  background: #222835;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #1a1208; border: none; font-weight: 600; margin-top: 4px; }
+
+/* Dash 4 component theme (dark) */
+.app {
+  --Dash-Fill-Interactive-Strong: #d9a066;
+  --Dash-Fill-Interactive-Weak: rgba(255, 255, 255, 0.04);
+  --Dash-Fill-Inverse-Strong: #1d222c;
+  --Dash-Fill-Primary-Active: rgba(255, 255, 255, 0.10);
+  --Dash-Fill-Primary-Hover: rgba(255, 255, 255, 0.06);
+  --Dash-Fill-Disabled: rgba(255, 255, 255, 0.06);
+  --Dash-Stroke-Strong: rgba(255, 255, 255, 0.30);
+  --Dash-Stroke-Weak: rgba(255, 255, 255, 0.10);
+  --Dash-Text-Primary: #e4e6eb;
+  --Dash-Text-Strong: #ffffff;
+  --Dash-Text-Weak: #8b93a5;
+  --Dash-Text-Disabled: #5d6474;
+  --Dash-Shading-Strong: rgba(0, 0, 0, 0.6);
+  --Dash-Shading-Weak: rgba(0, 0, 0, 0.4);
+}
+.dash-slider-mark { color: var(--muted); font-size: 11px; }
+.dash-range-slider-input { font-size: 12px; }
+.dash-dropdown-content, .dash-dropdown-options { background: #1d222c; color: var(--text); }
