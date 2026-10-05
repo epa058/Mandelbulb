@@ -1,6 +1,6 @@
 # Mandelbulb
 
-A Python Mandelbulb raymarcher with an interactive Plotly Dash explorer and a real-time WebGL viewer. This project was inspired by [Dash-Fractal-Explorer](https://github.com/SterlingButters/Dash-Fractal-Explorer) and aimed to reproduce the Mandelbulb renders on [Skytopia](https://www.skytopia.com/project/fractal/mandelbulb.html).
+A Python Mandelbulb raymarcher with an interactive Plotly Dash explorer and a [**real-time WebGL viewer**](https://epa058.github.io/Mandelbulb/web/). This project was inspired by [Dash-Fractal-Explorer](https://github.com/SterlingButters/Dash-Fractal-Explorer) and aimed to reproduce the Mandelbulb renders on [Skytopia](https://www.skytopia.com/project/fractal/mandelbulb.html).
 
 | Classic power 8         | Zoom ×4.9            | Power 4                |
 | ----------------------- | -------------------- | ---------------------- |
