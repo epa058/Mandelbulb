@@ -39,17 +39,6 @@ The main explorer is implemented in `app.py` using Plotly Dash.
 * **Julia mode:** switches from the Mandelbulb to Julia variants and adjusts the parameter `c`
 * **Presets:** provides useful starting points for exploring different regions
 
-### Camera
-
-The camera controls include:
-
-* Azimuth
-* Elevation
-* Field of view
-* Zoom in
-* Zoom out
-* Reset
-
 The readout below the image shows the current zoom, target, azimuth, and elevation. These values can be copied directly into `render.py` to reproduce the view.
 
 ---
